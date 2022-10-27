@@ -8,4 +8,5 @@ import (
 
 func TodoRoute(router *gin.Engine, s services.Server) {
 	router.GET("/todos", s.GetAll)
+	router.GET("/todos/:id", s.GetById)
 }
