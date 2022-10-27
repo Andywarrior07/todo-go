@@ -10,4 +10,5 @@ func TodoRoute(router *gin.Engine, s services.Server) {
 	router.GET("/todos", s.GetAll)
 	router.GET("/todos/:id", s.GetById)
 	router.POST("/todos", s.Create)
+	router.PUT("/todos/:id", s.Update)
 }
