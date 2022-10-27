@@ -107,6 +107,37 @@ func (s *Server) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
-func (s *Server) Update() {}
+func (s *Server) Update(c *gin.Context) {
+	collection := s.H.DB.Database("todos").Collection("todo")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	id := c.Param("id")
+	objId, _ := primitive.ObjectIDFromHex(id)
+
+	defer cancel()
+
+	var todo models.Todo
+
+	if err := c.BindJSON(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validate.Struct(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updatedData := bson.M{"title": todo.Title, "status": todo.Status}
+
+	result, err := collection.UpdateOne(ctx, bson.M{"_id": objId}, bson.M{"$set": updatedData})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+
+}
 
 func (s *Server) Delete() {}
