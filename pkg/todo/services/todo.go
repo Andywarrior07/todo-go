@@ -8,6 +8,7 @@ import (
 	"todo-example/pkg/todo/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -15,6 +16,8 @@ import (
 type Server struct {
 	H db.Handler
 }
+
+var validate = validator.New()
 
 func (s *Server) GetAll(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -44,7 +47,9 @@ func (s *Server) GetAll(c *gin.Context) {
 		todos = append(todos, todo)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"todos": todos})
+	c.JSON(http.StatusOK, todos)
+	// Si se quiere mandar un json
+	// c.JSON(http.StatusOK, gin.H{"todos": todos})
 }
 
 func (s *Server) GetById(c *gin.Context) {
@@ -64,11 +69,43 @@ func (s *Server) GetById(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"todo": todo})
+	c.JSON(http.StatusOK, todo)
 
 }
 
-func (s *Server) Create() {}
+func (s *Server) Create(c *gin.Context) {
+	collection := s.H.DB.Database("todos").Collection("todo")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	defer cancel()
+
+	var todo models.Todo
+
+	if err := c.BindJSON(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validate.Struct(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	newTodo := models.Todo{
+		ID:     primitive.NewObjectID(),
+		Title:  todo.Title,
+		Status: todo.Status,
+	}
+
+	result, err := collection.InsertOne(ctx, newTodo)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, result)
+}
 
 func (s *Server) Update() {}
 
