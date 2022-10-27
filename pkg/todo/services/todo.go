@@ -136,8 +136,33 @@ func (s *Server) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	if result.MatchedCount < 1 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Todo updated successfully"})
 
 }
 
-func (s *Server) Delete() {}
+func (s *Server) Delete(c *gin.Context) {
+	collection := s.H.DB.Database("todos").Collection("todo")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	id := c.Param("id")
+	objId, _ := primitive.ObjectIDFromHex(id)
+	result, err := collection.DeleteOne(ctx, bson.M{"_id": objId})
+
+	defer cancel()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	if result.DeletedCount < 1 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Todo deleted successfully"})
+}
